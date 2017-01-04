@@ -9,17 +9,21 @@
 #include <iostream>
 #include <vector>
 #include "string.h"
+#include <limits.h>
+#include <stack>
 using namespace std;
 CMap::CMap(int capacity) {
 	//可以容纳的顶点最大值
 	m_iCapacity = capacity;
 	//已经添加的顶点(结点)个数
 	m_iNodeCount = 0;
-	weightSum=0;
+	weightSum = 0;
 	//声明一个数组，数组的元素类型是Node
 	m_pNodeArray = new Node[m_iCapacity]; //用来存放顶点的数组
 	//声明一个数组，数组的元素类型是int
 	m_pMatrix = new int[m_iCapacity * m_iCapacity]; //用来存放邻接矩阵;本质上它是一维数组
+	m_dist = new int[m_iCapacity];
+	m_path = new int[m_iCapacity];
 	//将所有元素都置为0
 	/**
 	 * void *memset(void *s, int v, size_t n);
@@ -29,6 +33,8 @@ CMap::CMap(int capacity) {
 	 sizeof(int):计算int类型的大小
 	 */
 	memset(m_pMatrix, 0, m_iCapacity * m_iCapacity * sizeof(int));
+	memset(m_dist, 0, m_iCapacity * sizeof(int));
+	memset(m_path, 0, m_iCapacity * sizeof(int));
 	//如果有n个顶点，那么生成的树一定是n-1条边
 	m_pEdge = new Edge[m_iCapacity - 1];
 }
@@ -36,6 +42,8 @@ CMap::~CMap() {
 	delete[] m_pNodeArray;
 	delete[] m_pMatrix;
 	delete[] m_pEdge;
+	delete[] m_dist;
+	delete[] m_path;
 }
 bool CMap::addNode(Node *pNode) {
 	//m_pNodeArray:用来存放顶点的数组;m_iNodeCount:已经添加的顶点(结点)个数;
@@ -62,19 +70,14 @@ bool CMap::setValueToMaxtrixForDirectedGraph(int row, int col, int val) {
 	return true;
 	//PS：注意这里的索引是从0开始的，所以row不用加1
 }
-bool CMap::setValueToMaxtrixForUndirectedGraph(int row, int col, int val) {
-	if (row < 0 || row >= m_iCapacity || col < 0 || col >= m_iCapacity)
-		return false;
-	//用来存放邻接矩阵;row:行;col：列
-	m_pMatrix[row * m_iCapacity + col] = val;
-	//无向图的邻接矩阵沿对角线对称
-	m_pMatrix[col * m_iCapacity + row] = val;
-	return true;
-}
 
 bool CMap::getValueFromMatrix(int row, int col, int &val) {
 	val = m_pMatrix[row * m_iCapacity + col];
 	return true;
+}
+
+int CMap::getValueFromMatrix(int row, int col) {
+	return m_pMatrix[row * m_iCapacity + col];
 }
 void CMap::printMatrix() {
 	for (int i = 0; i < m_iCapacity; i++) {
@@ -239,7 +242,8 @@ int CMap::getMinEdge(vector<Edge> edgeVec) {
 		return -1;
 //寻找最小权重
 	for (; i < (int) edgeVec.size(); i++) {
-		if (edgeVec[i].m_bSelected) {
+		if (edgeVec[i].m_bSelected || edgeVec[i].m_iNodeIndexA == 1
+				|| edgeVec[i].m_iNodeIndexB == 1) {
 			continue;
 		} else {
 			if (minWeight > edgeVec[i].m_iWeightValue) {
@@ -366,5 +370,71 @@ void CMap::mergeNodeSet(vector<int>&nodeSetA, vector<int> nodeSetB) {
 	for (int i = 0; i < (int) nodeSetB.size(); i++) {
 		nodeSetA.push_back(nodeSetB[i]);
 	}
+}
+//Dijkstra算法;dist[i]记录了从起点到达顶点i的最短距离;path[i]记录了从起点到顶点i路径上的i前面的一个顶点
+void CMap::dijkstraTree(int nodeIndex) {
+	int i, j, k;
+	//点集
+	vector<int> nodeVec;
+	//边集
+	vector<Edge> edgeVec;
+	//数组dist[i]记录了从起点到达顶点i的最短距离
+	//数组path[i]记录了从起点到顶点i路径上的i前面的一个顶点
+
+	for (i = 0; i < m_iCapacity; i++)     //初始化
+			{
+		if (getValueFromMatrix(nodeIndex, i) > 0 && i != nodeIndex) {
+			m_dist[i] = getValueFromMatrix(nodeIndex, i);
+			m_path[i] = nodeIndex;     //path记录最短路径上从v0到i的前一个顶点
+		} else {
+			m_dist[i] = INT_MAX;    //若i不与v0直接相邻，则权值置为无穷大
+			m_path[i] = -1;
+		}
+		m_pNodeArray[i].m_bIsVisited = false;
+		m_path[nodeIndex] = nodeIndex;
+		m_dist[nodeIndex] = 0;
+//		cout << "m_dist[]数组中第" << i + 1 << "个元素的大小为:" << m_dist[i] << endl;
+//		cout << "m_path[]数组中第" << i + 1 << "个元素的大小为:" << m_path[i] << endl;
+	}
+
+	m_pNodeArray[nodeIndex].m_bIsVisited = true;
+	for (int i = 1; i < m_iCapacity; i++)     //循环扩展n-1次
+			{
+		int min = INT_MAX;
+		int u = 0;
+		for (j = 0; j < m_iCapacity; j++)    //寻找未被扩展的权值最小的顶点
+				{
+			if (m_pNodeArray[j].m_bIsVisited == false && m_dist[j] < min) {
+				min = m_dist[j];
+				u = j;
+			}
+		}
+		m_pNodeArray[u].m_bIsVisited = true;
+		for (k = 0; k < m_iCapacity; k++)   //更新dist数组的值和路径的值
+				{
+			if (m_pNodeArray[k].m_bIsVisited == false
+					&& getValueFromMatrix(u, k) > 0
+					&& min + getValueFromMatrix(u, k) < m_dist[k]) {
+				m_dist[k] = min + getValueFromMatrix(u, k);
+				m_path[k] = u;
+			}
+		}
+	}
+}
+//打印从顶点beginIndex到顶点endIndex最短路径上的各个顶点
+void CMap::showPath(int beginIndex, int endIndex) {
+	cout<<"从顶点"<<beginIndex<<"到顶点"<<endIndex<<"的最短路径:"<<endl;
+	stack<int> s;
+	while (endIndex != beginIndex) {
+		s.push(endIndex);
+		endIndex = m_path[endIndex];
+	}
+	s.push(endIndex);
+	while (!s.empty()) {
+		cout << s.top() << "-->";
+		s.pop();
+	}
+
+	cout<<endl<<"最短路径的权重为："<<m_dist[4];
 }
 
