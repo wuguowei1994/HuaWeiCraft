@@ -393,8 +393,6 @@ void CMap::dijkstraTree(int nodeIndex) {
 		m_pNodeArray[i].m_bIsVisited = false;
 		m_path[nodeIndex] = nodeIndex;
 		m_dist[nodeIndex] = 0;
-//		cout << "m_dist[]数组中第" << i + 1 << "个元素的大小为:" << m_dist[i] << endl;
-//		cout << "m_path[]数组中第" << i + 1 << "个元素的大小为:" << m_path[i] << endl;
 	}
 
 	m_pNodeArray[nodeIndex].m_bIsVisited = true;
@@ -416,6 +414,7 @@ void CMap::dijkstraTree(int nodeIndex) {
 					&& getValueFromMatrix(u, k) > 0
 					&& min + getValueFromMatrix(u, k) < m_dist[k]) {
 				m_dist[k] = min + getValueFromMatrix(u, k);
+//				cout<<"m_dist"<<k<<"为:"<<m_dist[k];
 				m_path[k] = u;
 			}
 		}
@@ -423,7 +422,8 @@ void CMap::dijkstraTree(int nodeIndex) {
 }
 //打印从顶点beginIndex到顶点endIndex最短路径上的各个顶点
 void CMap::showPath(int beginIndex, int endIndex) {
-	cout<<"从顶点"<<beginIndex<<"到顶点"<<endIndex<<"的最短路径:"<<endl;
+	int count=0;
+	cout << "从顶点" << beginIndex << "到顶点" << endIndex << "的最短路径:" << endl;
 	stack<int> s;
 	while (endIndex != beginIndex) {
 		s.push(endIndex);
@@ -431,10 +431,10 @@ void CMap::showPath(int beginIndex, int endIndex) {
 	}
 	s.push(endIndex);
 	while (!s.empty()) {
-		cout << s.top() << "-->";
+		cout << s.top() << "--";
+		count++;
 		s.pop();
 	}
-
-	cout<<endl<<"最短路径的权重为："<<m_dist[4];
+	cout << endl << "最短路径的权重为：" << m_dist[1];
 }
 
